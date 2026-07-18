@@ -123,17 +123,26 @@ router.post("/verify-payment", (req, res) => {
     [plan, userId],
     (err) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: "Database Error"
-            });
-        }
+       if (err) {
+    console.log("UPDATE ERROR:", err);
+
+    return res.status(500).json({
+        success: false,
+        message: err.message
+    });
+}
 
         db.query(
             "SELECT * FROM users WHERE id=?",
             [userId],
             async (err, result) => {
+                if (err) {
+    console.log("SELECT ERROR:", err);
+    return res.status(500).json({
+        success: false,
+        message: err.message
+    });
+}
 
                 if (err || result.length === 0) {
 
