@@ -101,7 +101,8 @@ async function buyPlan(plan){
 
     try{
 
-        const orderRequest = await fetch("http://localhost:3000/api/create-order",{
+        // Create Order
+        const orderRequest = await fetch("/api/create-order",{
 
             method:"POST",
 
@@ -143,7 +144,8 @@ async function buyPlan(plan){
 
             handler:async function(response){
 
-                const verify = await fetch("http://localhost:3000/api/verify-payment",{
+                // Verify Payment
+                const verify = await fetch("/api/verify-payment",{
 
                     method:"POST",
 
@@ -171,6 +173,11 @@ async function buyPlan(plan){
 
                 alert(result.message);
 
+            },
+
+            prefill:{
+                name:"Janhavi",
+                email:"paymentsystemsubscription@gmail.com"
             },
 
             theme:{
