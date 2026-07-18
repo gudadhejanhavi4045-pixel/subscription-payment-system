@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const db = require("../config/db");
 const transporter = require("../config/mailer");
+
 const router = express.Router();
 
 const razorpay = new Razorpay({
@@ -16,24 +17,6 @@ const razorpay = new Razorpay({
 router.post("/create-order", async (req, res) => {
 
     const { userId, plan } = req.body;
-
-    // Payment allowed only between 10 AM and 11 AM IST
-    const now = new Date();
-    const ist = new Date(
-        now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
-
-    const hour = ist.getHours();
-
-    // Uncomment before final submission
-    /*
-    if (hour !== 10) {
-        return res.status(403).json({
-            success: false,
-            message: "Payments are allowed only between 10:00 AM and 11:00 AM IST"
-        });
-    }
-    */
 
     let amount = 0;
 
@@ -57,7 +40,7 @@ router.post("/create-order", async (req, res) => {
     try {
 
         const order = await razorpay.orders.create({
-            amount: amount,
+            amount,
             currency: "INR",
             receipt: "receipt_" + Date.now()
         });
@@ -69,7 +52,7 @@ router.post("/create-order", async (req, res) => {
 
     } catch (err) {
 
-        console.log(err);
+        console.log("CREATE ORDER ERROR:", err);
 
         res.status(500).json({
             success: false,
@@ -80,92 +63,93 @@ router.post("/create-order", async (req, res) => {
 
 });
 
-
 // =======================
 // VERIFY PAYMENT
 // =======================
 router.post("/verify-payment", (req, res) => {
 
     const {
-
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
         userId,
         plan
-
     } = req.body;
 
-    const body =
-        razorpay_order_id + "|" + razorpay_payment_id;
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
 
     const expectedSignature = crypto
-        .createHmac(
-            "sha256",
-            process.env.RAZORPAY_KEY_SECRET
-        )
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
         .update(body)
         .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-
         return res.status(400).json({
-
             success: false,
             message: "Payment Verification Failed"
-
         });
-
     }
 
+    // Update subscription plan
     db.query(
-    "UPDATE users SET plan=? WHERE id=?",
-    [plan, userId],
-    (err) => {
+        "UPDATE users SET plan=? WHERE id=?",
+        [plan, userId],
+        (err) => {
 
-       if (err) {
-    console.log("UPDATE ERROR:", err);
+            if (err) {
 
-    return res.status(500).json({
-        success: false,
-        message: err.message
-    });
-}
+                console.log("=================================");
+                console.log("UPDATE ERROR");
+                console.log(err);
+                console.log("=================================");
 
-        db.query(
-            "SELECT * FROM users WHERE id=?",
-            [userId],
-            async (err, result) => {
-                if (err) {
-    console.log("SELECT ERROR:", err);
-    return res.status(500).json({
-        success: false,
-        message: err.message
-    });
-}
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
 
-                if (err || result.length === 0) {
+            // Fetch user details
+            db.query(
+                "SELECT * FROM users WHERE id=?",
+                [userId],
+                async (err, result) => {
 
-                    return res.json({
-                        success: true,
-                        message: "Subscription Activated Successfully"
-                    });
+                    if (err) {
 
-                }
+                        console.log("=================================");
+                        console.log("SELECT ERROR");
+                        console.log(err);
+                        console.log("=================================");
 
-                const user = result[0];
+                        return res.status(500).json({
+                            success: false,
+                            message: err.message
+                        });
+                    }
 
-                try {
+                    if (result.length === 0) {
 
-                    const info = await transporter.sendMail({
+                        return res.status(404).json({
+                            success: false,
+                            message: "User not found"
+                        });
 
-                        from: process.env.EMAIL_USER,
+                    }
 
-                        to: user.email,
+                    const user = result[0];
 
-                        subject: "Subscription Activated",
+                    try {
 
-                        html: `
+                        const info = await transporter.sendMail({
+
+                            from: process.env.EMAIL_USER,
+
+                            to: user.email,
+
+                            subject: "Subscription Activated",
+
+                            html: `
                             <h2>Subscription Activated Successfully</h2>
 
                             <p>Hello <b>${user.name}</b>,</p>
@@ -195,34 +179,33 @@ router.post("/verify-payment", (req, res) => {
                             <br>
 
                             <h3>Thank you for choosing our platform.</h3>
+                            `
 
-                        `
+                        });
 
+                        console.log("=================================");
+                        console.log("EMAIL SENT SUCCESSFULLY");
+                        console.log(info);
+                        console.log("=================================");
+
+                    } catch (emailError) {
+
+                        console.log("EMAIL ERROR");
+                        console.log(emailError);
+
+                    }
+
+                    res.json({
+                        success: true,
+                        message: "Subscription Activated & Email Sent"
                     });
-  console.log("==================================");
-    console.log("EMAIL SENT SUCCESSFULLY");
-    console.log(info);
-    console.log("==================================");
-                } catch (emailError) {
-
-                    console.log(emailError);
 
                 }
+            );
 
-                                res.json({
-                    success: true,
-                    message: "Subscription Activated & Email Sent"
-                });
-
-            }
-
-        );
-
-    }
-
-);
+        }
+    );
 
 });
-
 
 module.exports = router;

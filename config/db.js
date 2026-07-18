@@ -10,9 +10,31 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) {
-        console.log("MySQL Connection Error:", err);
+        console.log("====================================");
+        console.log("MySQL Connection Error:");
+        console.log(err);
+        console.log("====================================");
     } else {
+        console.log("====================================");
         console.log("MySQL Connected");
+        console.log("====================================");
+
+        db.query("SELECT DATABASE() AS db", (err, result) => {
+            if (err) {
+                console.log("Database Check Error:", err);
+            } else {
+                console.log("Connected Database:", result[0].db);
+            }
+        });
+
+        db.query("DESCRIBE users", (err, result) => {
+            if (err) {
+                console.log("Users Table Error:", err);
+            } else {
+                console.log("Users Table Structure:");
+                console.table(result);
+            }
+        });
     }
 });
 
