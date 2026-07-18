@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscription Payment System</title>
+
+<style>
+body{
+    font-family:Arial, sans-serif;
+    background:#f4f4f4;
+    margin:0;
+    padding:40px;
+}
+
+h1{
+    text-align:center;
+    color:#333;
+}
+
+.container{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-top:40px;
+}
+
+.card{
+    width:250px;
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
+    padding:20px;
+    text-align:center;
+}
+
+.card h2{
+    margin-bottom:10px;
+}
+
+.price{
+    font-size:30px;
+    color:green;
+    margin:15px 0;
+    font-weight:bold;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    background:#3399cc;
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#2579a9;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Subscription Payment System</h1>
+
+<div class="container">
+
+<div class="card">
+<h2>Bronze</h2>
+<p>5 Questions / Day</p>
+<div class="price">₹100</div>
+<button onclick="buyPlan('Bronze')">Buy Bronze</button>
+</div>
+
+<div class="card">
+<h2>Silver</h2>
+<p>10 Questions / Day</p>
+<div class="price">₹300</div>
+<button onclick="buyPlan('Silver')">Buy Silver</button>
+</div>
+
+<div class="card">
+<h2>Gold</h2>
+<p>Unlimited Questions</p>
+<div class="price">₹1000</div>
+<button onclick="buyPlan('Gold')">Buy Gold</button>
+</div>
+
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+
+async function buyPlan(plan){
+
+    try{
+
+        const orderRequest = await fetch("http://localhost:3000/api/create-order",{
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+
+                userId:1,
+                plan:plan
+
+            })
+
+        });
+
+        const data = await orderRequest.json();
+
+        if(!data.success){
+
+            alert(data.message);
+            return;
+
+        }
+
+        var options={
+
+            key:"rzp_test_TEIKFVOTQvP9Gi",
+
+            amount:data.order.amount,
+
+            currency:data.order.currency,
+
+            name:"Subscription Payment System",
+
+            description:plan+" Subscription",
+
+            order_id:data.order.id,
+
+            handler:async function(response){
+
+                const verify = await fetch("http://localhost:3000/api/verify-payment",{
+
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":"application/json"
+                    },
+
+                    body:JSON.stringify({
+
+                        userId:1,
+
+                        plan:plan,
+
+                        razorpay_order_id:response.razorpay_order_id,
+
+                        razorpay_payment_id:response.razorpay_payment_id,
+
+                        razorpay_signature:response.razorpay_signature
+
+                    })
+
+                });
+
+                const result = await verify.json();
+
+                alert(result.message);
+
+            },
+
+            theme:{
+                color:"#3399cc"
+            }
+
+        };
+
+        var rzp = new Razorpay(options);
+
+        rzp.open();
+
+    }
+
+    catch(error){
+
+        console.log(error);
+
+        alert("Something went wrong.");
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
