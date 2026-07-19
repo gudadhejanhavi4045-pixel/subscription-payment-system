@@ -10,32 +10,22 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) {
-        console.log("====================================");
-        console.log("MySQL Connection Error:");
-        console.log(err);
-        console.log("====================================");
-    } else {
-        console.log("====================================");
-        console.log("MySQL Connected");
-        console.log("====================================");
-
-        db.query("SELECT DATABASE() AS db", (err, result) => {
-            if (err) {
-                console.log("Database Check Error:", err);
-            } else {
-                console.log("Connected Database:", result[0].db);
-            }
-        });
-
-        db.query("DESCRIBE users", (err, result) => {
-            if (err) {
-                console.log("Users Table Error:", err);
-            } else {
-                console.log("Users Table Structure:");
-                console.table(result);
-            }
-        });
+        console.log("Connection Error:", err);
+        return;
     }
+
+    console.log("====================================");
+    console.log("Connected Database:", process.env.MYSQLDATABASE);
+    console.log("Host:", process.env.MYSQLHOST);
+    console.log("====================================");
+
+    db.query("SHOW CREATE TABLE users", (err, result) => {
+        if (err) {
+            console.log(err);
+        } else {
+            console.log(result[0]["Create Table"]);
+        }
+    });
 });
 
 module.exports = db;
