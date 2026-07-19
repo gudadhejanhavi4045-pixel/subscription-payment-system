@@ -16,7 +16,7 @@ const razorpay = new Razorpay({
 // =======================
 router.post("/create-order", async (req, res) => {
 
-    const { userId, plan } = req.body;
+    const { plan } = req.body;
 
     let amount = 0;
 
@@ -52,7 +52,7 @@ router.post("/create-order", async (req, res) => {
 
     } catch (err) {
 
-        console.log("CREATE ORDER ERROR:", err);
+        console.log(err);
 
         res.status(500).json({
             success: false,
@@ -90,18 +90,13 @@ router.post("/verify-payment", (req, res) => {
         });
     }
 
-    // Update subscription plan
     db.query(
         "UPDATE users SET plan=? WHERE id=?",
         [plan, userId],
         (err) => {
 
             if (err) {
-
-                console.log("=================================");
-                console.log("UPDATE ERROR");
                 console.log(err);
-                console.log("=================================");
 
                 return res.status(500).json({
                     success: false,
@@ -109,18 +104,13 @@ router.post("/verify-payment", (req, res) => {
                 });
             }
 
-            // Fetch user details
             db.query(
                 "SELECT * FROM users WHERE id=?",
                 [userId],
-                async (err, result) => {
+                (err, result) => {
 
                     if (err) {
-
-                        console.log("=================================");
-                        console.log("SELECT ERROR");
                         console.log(err);
-                        console.log("=================================");
 
                         return res.status(500).json({
                             success: false,
@@ -139,25 +129,25 @@ router.post("/verify-payment", (req, res) => {
 
                     const user = result[0];
 
-                    try {
+                    // ✅ SEND RESPONSE IMMEDIATELY
+                    res.json({
+                        success: true,
+                        message: "Subscription Activated"
+                    });
 
-                        const info = await transporter.sendMail({
-
-                            from: process.env.EMAIL_USER,
-
-                            to: user.email,
-
-                            subject: "Subscription Activated",
-
-                            html: `
+                    // ✅ SEND EMAIL IN BACKGROUND
+                    transporter.sendMail({
+                        from: process.env.EMAIL_USER,
+                        to: user.email,
+                        subject: "Subscription Activated",
+                        html: `
                             <h2>Subscription Activated Successfully</h2>
 
                             <p>Hello <b>${user.name}</b>,</p>
 
-                            <p>Your subscription has been activated.</p>
+                            <p>Your subscription has been activated successfully.</p>
 
                             <table border="1" cellpadding="10">
-
                                 <tr>
                                     <th>Plan</th>
                                     <td>${plan}</td>
@@ -173,31 +163,18 @@ router.post("/verify-payment", (req, res) => {
                                             : "₹1000"
                                     }</td>
                                 </tr>
-
                             </table>
 
                             <br>
 
-                            <h3>Thank you for choosing our platform.</h3>
-                            `
-
-                        });
-
-                        console.log("=================================");
-                        console.log("EMAIL SENT SUCCESSFULLY");
-                        console.log(info);
-                        console.log("=================================");
-
-                    } catch (emailError) {
-
-                        console.log("EMAIL ERROR");
-                        console.log(emailError);
-
-                    }
-
-                    res.json({
-                        success: true,
-                        message: "Subscription Activated & Email Sent"
+                            <h3>Thank you for subscribing!</h3>
+                        `
+                    })
+                    .then(() => {
+                        console.log("Email sent successfully.");
+                    })
+                    .catch((emailErr) => {
+                        console.log("Email Error:", emailErr);
                     });
 
                 }
